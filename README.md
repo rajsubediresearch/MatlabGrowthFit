@@ -36,6 +36,12 @@ Run_Forecasting_GrowthModels(1, 1, 20, 4);
 plotForecast_GrowthModels(1, 1, 20, 4);
 ```
 
+<p align="center">
+  <img src="docs/images/forecast.png" alt="Quick-start output: bootstrap histograms of r, p, a and K above the fitted and forecast mpox incidence" width="100%">
+</p>
+
+*Quick-start output. **Top:** bootstrap distributions of $r$, $p$, $a$ and $K$. The red dashed vertical line marks the fit to the observed data and the red dashed horizontal segment its 95% interval; $a$ is fixed at 1 in the generalized logistic model. **Bottom:** observations (blue circles), bootstrap trajectories with observation noise (cyan), predictive median and 95% prediction limits (red), fitted calibration trajectories (grey) and the end of the calibration window (black dashed line).*
+
 The first two arguments are the first and last **window-start rows**. Setting both to `1` selects one window. The third argument gives the calibration length and the fourth gives the forecast horizon. In this example, rows 1–20 are used for fitting and rows 21–24 are held out. The input time index starts at zero, so the four forecast targets have time labels 20–23. [Example data](forecasting_growthmodels%20code/input/Most_Recent_Timeseries_US-CDC.txt)
 
 Open the trajectory file to see the forecasts beside the four held-out counts (669, 546, 404 and 329). The `median`, `LB` and `UB` columns give the predictive median and the 95% prediction limits.
@@ -53,6 +59,17 @@ rng(1, 'twister');
 Run_Fit_GrowthModels(1, 1, 20);
 plotFit_GrowthModels(1, 1, 20);
 ```
+
+<details>
+<summary>Fit-only output</summary>
+<br>
+<p align="center">
+  <img src="docs/images/fit.png" alt="Fit-only output: bootstrap histograms of r, p, a and K above the fitted mpox incidence" width="100%">
+</p>
+
+*Same layout as the forecast figure, without forecast rows: parameter distributions with the fitted estimate (red dashed vertical line) and 95% interval, and the fitted trajectories over the 20 calibration observations.*
+
+</details>
 
 ### Defaults and custom options
 
@@ -75,6 +92,18 @@ plotForecast_GrowthModels(1, 1, 20, 4, opts);
 ```
 
 For a fit-only analysis, the options handle is the fourth argument to both functions. A bundled GLM example fits a simulated series with known growth parameters. Other configurations cover cholera and country-specific mpox series. Check the input filename and window settings when adapting an example. [Simulated GLM fit options](forecasting_growthmodels%20code/options_fit_GLM.m) · [Example datasets](forecasting_growthmodels%20code/input)
+
+For a fit of `w` observations in a file with `N` rows, the last possible window starts at row `N - w + 1`. The following examples each fit the last 20 observations of the indicated file. Use the same start row for both window arguments to fit one window.
+
+| Fit options | Input file | Rows in file | Calibration rows |
+| --- | --- | ---: | --- |
+| [`options_fit_mpox`](forecasting_growthmodels%20code/options_fit_mpox.m) or [`options_fit_mpoxCDC`](forecasting_growthmodels%20code/options_fit_mpoxCDC.m) | `Most_Recent_Timeseries_US-CDC.txt` | 32 | 13–32 |
+| [`options_fit_fluAlaska`](forecasting_growthmodels%20code/options_fit_fluAlaska.m) | `curve1.txt` | 50 | 31–50 |
+
+```matlab
+Run_Fit_GrowthModels(13, 13, 20, @options_fit_mpoxCDC);
+plotFit_GrowthModels(13, 13, 20, @options_fit_mpoxCDC);
+```
 
 ## Input data
 
@@ -109,7 +138,7 @@ The options function sets `method1` (the fitting criterion) and `dist1` (the obs
 
 | `method1` | Fit to observations | Bootstrap and predictive noise |
 | ---: | --- | --- |
-| 0 | Unweighted nonlinear least squares | Choose `dist1 = 0` for Gaussian, `1` for Poisson or `2` for negative binomial with variance $\phi\mu$. All three minimize the same sum of squared errors. |
+| 0 | Unweighted nonlinear least squares, minimizing $\sum_i (y_i-\mu_i)^2$ | `dist1` selects the noise for bootstrap datasets and predictive draws. Choose `0` for Gaussian, `1` for Poisson or `2` for negative binomial with variance $\phi\mu$. |
 | 1 | Poisson maximum likelihood | `dist1 = 1`, variance $\mu$. |
 | 3 | Negative-binomial maximum likelihood | `dist1 = 3`, variance $\mu + \alpha\mu$. |
 | 4 | Negative-binomial maximum likelihood | `dist1 = 4`, variance $\mu + \alpha\mu^2$. |
@@ -131,17 +160,35 @@ Compare candidate models on the same observations with the same initial-state tr
 
 ## Rolling windows and forecast evaluation
 
-This example evaluates four-step forecasts from five successive starting rows.
+This example evaluates four-step forecasts from six successive starting rows.
 
 ```matlab
 rng(1, 'twister');
-Run_Forecasting_GrowthModels(1, 5, 20, 4);
-plotForecast_GrowthModels(1, 5, 20, 4);
+Run_Forecasting_GrowthModels(1, 6, 20, 4);
+plotForecast_GrowthModels(1, 6, 20, 4);
 ```
 
-The first window fits rows 1–20 and forecasts rows 21–24. The last fits rows 5–24 and forecasts rows 25–28. For `N` observations and horizon `h`, a fully scored run requires `tend1 + windowsize1 - 1 + h <= N`. With the default `getperformance = 1`, the runner stops if the full horizon cannot be evaluated. For forecasts beyond the series, set `getperformance = 0` in the forecast options. The runner still calls its scoring functions, which can warn about unavailable observations. Predictive quantiles are calculated separately.
+The first window fits rows 1–20 and forecasts rows 21–24. The last fits rows 6–25 and forecasts rows 26–29. For `N` observations and horizon `h`, a fully scored run requires `tend1 + windowsize1 - 1 + h <= N`. With the default `getperformance = 1`, the runner stops if the full horizon cannot be evaluated. For forecasts beyond the series, set `getperformance = 0` in the forecast options. The runner still calls its scoring functions, which can warn about unavailable observations. Predictive quantiles are calculated separately.
+
+<p align="center">
+  <img src="docs/images/rollingForecasts.png" alt="One forecast panel per rolling window, showing data, prediction intervals and the end of each calibration window" width="100%">
+</p>
+
+*One panel per window, in window order: observations (blue circles), predictive median and 95% prediction limits (red), and the end of the calibration window (black dashed line). With six windows the panels form a 2-by-3 grid.*
+
+<p align="center">
+  <img src="docs/images/rollingParameters.png" alt="Observed series above the estimates of r, a, p and K for each window start" width="100%">
+</p>
+
+*Parameter estimates across windows. **Top:** the observed series. **Bottom:** for each window start, the estimate of $r$, $a$, $p$ and $K$ (red circles), its 95% bootstrap interval (blue dashed lines) and a smoothed trend (black dashed line).*
 
 Forecast scores at horizon `h` summarize **all of the first `h` held-out observations**. For example, the four-step MAE averages four absolute errors. MAE and MSE use the median across refitted model trajectories. Coverage of the 95% prediction interval (reported as a percentage) and the weighted interval score (WIS) use trajectories with observation noise. The rolling summary records the full requested horizon for each window. [Point errors and coverage](forecasting_growthmodels%20code/computeforecastperformance.m) · [WIS](forecasting_growthmodels%20code/computeWIS.m)
+
+<p align="center">
+  <img src="docs/images/forecastPerformance.png" alt="MAE, MSE, 95% prediction-interval coverage and WIS against forecast horizon for the quick-start forecast" width="65%">
+</p>
+
+*Forecast performance of the quick-start forecast against horizon: MAE, MSE, coverage of the 95% prediction interval and WIS. The value at horizon $h$ summarizes the first $h$ held-out observations.*
 
 ## Outputs and diagnostics
 
@@ -166,16 +213,38 @@ The console reports requested, accepted and unresolved bootstrap fits. Acceptanc
 
 The growth-model plots also export `doublingtimes-*.csv` from the fitted calibration trajectories. Each row describes a successive doubling of cumulative incidence, with its mean elapsed time, percentile limits and the fraction of bootstrap trajectories reaching that doubling.
 
-To estimate the effective reproduction number $R_t$, first run the matching fit or forecast. Supply the generation-interval distribution in observation-time units. The choices are gamma (`type_GId1 = 1`), exponential (`2`), or fixed interval (`3`). The gamma option uses `mean_GI1` and `var_GI1` in time units and squared time units, respectively. Both plotting functions also accept a custom generation-interval function as the final argument. [Generation-interval options](forecasting_growthmodels%20code/options_Rt.m)
+To estimate the effective reproduction number $R_t$, first run the matching fit or forecast. The final argument to each plotting function is an options function, such as `@options_Rt`. It takes no inputs and returns `[type_GId1, mean_GI1, var_GI1]`. To use different settings, copy the options function and pass its handle. [Generation-interval options](forecasting_growthmodels%20code/options_Rt.m)
+
+| `type_GId1` | Generation interval | Settings used |
+| ---: | --- | --- |
+| 1 | Gamma | Mean in observation-time units and variance in squared units |
+| 2 | Exponential | Mean in observation-time units |
+| 3 | Fixed | A positive lag in multiples of 0.01 observation-time units |
 
 ```matlab
 plotFit_ReproductionNumber(1, 1, 20, @options_fit, @options_Rt);
 plotForecast_ReproductionNumber(1, 1, 20, 4, @options_forecast, @options_Rt);
 ```
 
-The renewal calculation interpolates incidence on a 0.01-unit grid and uses only the incidence history within the window. The gamma and exponential routines evaluate their distribution on the supplied time axis, so use a window starting at time zero to interpret the grid as elapsed lag. The fixed-interval option requires a mean on the 0.01-unit grid. The estimates returned by `get_Rt` align with `ts(2:end)`. The intermediate rows of the `Rt-*.csv` export use a one-grid-step offset relative to that pairing. [Renewal calculation](forecasting_growthmodels%20code/get_Rt.m)
+<p align="center">
+  <img src="docs/images/Rt.png" alt="Fitted incidence above the effective reproduction number with its 95% interval" width="75%">
+</p>
+
+*Output of `plotFit_ReproductionNumber` for the fit-only example. **Top:** observations and fitted trajectories. **Bottom:** median $R_t$ (solid red) with its 95% interval (red dashed), the threshold $R_t = 1$ and the end of the calibration window (black dashed lines).*
+
+The renewal calculation interpolates incidence on a 0.01-unit grid and uses the incidence history within the window. The gamma and exponential routines evaluate their distribution on the supplied time axis, so use a window starting at time zero to interpret the grid as elapsed lag. For a fixed lag $g$, the estimate is $I(t)/I(t-g)$ wherever the lagged incidence is available and positive. Earlier versions of `get_Rt.m` placed the fixed lag one grid step late. [Renewal calculation](forecasting_growthmodels%20code/get_Rt.m)
+
+For exact timing, pair the values returned by `get_Rt` with `ts(2:end)`. In the `Rt-*.csv` export, the time labels before the final row are 0.01 units earlier than the corresponding estimates.
 
 ## Reproducibility and support
+
+To regenerate all six README figures from a fresh checkout, run the following command from the code folder. It resets the random seed to `rng(1, 'twister')` before each runner and writes the PNGs to `docs/images/`. The rolling-window parameter plot uses the Curve Fitting Toolbox. [Figure-generation script](forecasting_growthmodels%20code/make_readme_figures.m)
+
+```matlab
+make_readme_figures
+```
+
+After the full run, `make_readme_figures(false)` redraws the figures from the saved MAT files. It needs the 20-observation fit starting at row 1, the single-window four-step forecast starting at row 1, and the six-window four-step forecast starting at rows 1–6. The historical MAT files bundled in `output/` use other settings.
 
 Record the repository revision (`git rev-parse HEAD`), MATLAB and toolbox versions (`ver`), input data, options functions, window arguments and random seed. Output filenames omit the seed, `B` and some optimizer settings, so archive results before rerunning with those settings changed. The repository also includes historical outputs.
 
